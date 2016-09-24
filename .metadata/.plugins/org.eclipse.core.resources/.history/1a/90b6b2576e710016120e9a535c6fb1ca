@@ -1,0 +1,197 @@
+package com.franailin.gamestate;
+
+import java.util.ArrayList;
+import java.util.ListIterator;
+import java.util.Random;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.franailin.helper.AssetInitialize;
+import com.franailin.units.Enemy;
+import com.franailin.units.Platform;
+import com.franailin.units.Player;
+
+public class GameWorld 
+{
+	public Player player;
+	public ArrayList<Enemy> enemies;
+	public ArrayList<Platform> platforms;
+	public State state = State.PAUSED;
+	public double timeToSpawnPlatform;
+	public Random rand;
+	public float platformScale = (float) 0.25;
+	public int score;
+	public float oneSecondinMilli = 1000;
+	public float time;
+	Music judgementDay;
+	
+	public enum State
+	{
+		PAUSED, RUNNING, GAMEOVER
+	}
+	
+	public GameWorld()
+	{
+		player = new Player((float)(Gdx.graphics.getWidth() * 0.25F), 
+				(float)(Gdx.graphics.getHeight() * 0.25F) + Platform.platformTexture.getHeight(), 0.2F, 0.3F, this);
+		enemies = new ArrayList<Enemy>();
+		platforms = new ArrayList<Platform>();
+		platforms.add(new Platform((float)(Gdx.graphics.getWidth() * 0.25F), (float)(Gdx.graphics.getHeight() * 0.25F),
+				Gdx.graphics.getWidth() * 0.75F, Platform.platformTexture.getHeight()));
+		timeToSpawnPlatform = 0;
+		time = 0;
+		rand = new Random();
+	}
+	
+	public void update(float delta)
+	{
+		switch (state)
+		{
+			case PAUSED:
+				break;
+			case RUNNING:
+				time += delta;
+				if (time >= oneSecondinMilli)
+				{
+					time = 0;
+					addScore(1);
+				}
+				timeToSpawnPlatform = delta + timeToSpawnPlatform;
+				if (timeToSpawnPlatform >= 10)
+				{
+					createPlatform();
+					timeToSpawnPlatform = 0;
+				}
+				player.update(platforms, enemies, delta);
+				ListIterator<Enemy> iterateEnemies = enemies.listIterator();
+				while (iterateEnemies.hasNext())
+				{
+					if (iterateEnemies.next().updateAndRemoveIfTrue(delta))
+					{
+						iterateEnemies.remove();
+					}
+				}
+				ListIterator<Platform> iteratePlat = platforms.listIterator();
+				while (iteratePlat.hasNext())
+				{
+					if (iteratePlat.next().updateAndRemoveIfTrue(delta))
+					{
+						iteratePlat.remove();
+					}
+				}
+				break;
+			case GAMEOVER:
+				break;
+		}
+	}
+	
+	public void render(SpriteBatch batcher)
+	{
+		switch (state)
+		{
+			case PAUSED:
+				callRenderPauseForAllObjects(batcher);
+			case RUNNING:
+				callRenderForAllObjects(batcher);
+			case GAMEOVER:
+				callRenderPauseForAllObjects(batcher);
+		default:
+			break;
+				
+		}
+	}
+	
+	public void callRenderPauseForAllObjects( SpriteBatch batcher )
+	{
+		for (int x = 0; x < platforms.size(); x++)
+		{
+			platforms.get(x).renderPause(batcher);
+		}
+		for (int x = 0; x < enemies.size(); x++)
+		{
+			enemies.get(x).render(batcher);
+		}
+		player.renderPause(batcher);
+	}
+	
+	public void callRenderForAllObjects( SpriteBatch batcher )
+	{
+		for (int x = 0; x < platforms.size(); x++)
+		{
+			platforms.get(x).render(batcher);
+		}
+		for (int x = 0; x < enemies.size(); x++)
+		{
+			enemies.get(x).render(batcher);
+		}
+		player.render(batcher);
+	}
+	
+	public void createPlatform()
+	{
+		float x = platforms.get(platforms.size() - 1).x + platforms.get(platforms.size() - 1).width + 30;
+		float y = platforms.get(platforms.size() - 1).y;
+		if (rand.nextBoolean())
+		{
+			if (y + 40 < Gdx.graphics.getHeight())
+			{
+				y += 40;
+			}
+			else
+			{
+				y = Gdx.graphics.getHeight();
+			}
+		}
+		else
+		{
+			if (y - 40 > 0)
+			{
+				y -= 40;
+			}
+			else
+			{
+				y = 0;
+			}
+		}
+		float width = rand.nextInt(3) + 1;
+		Platform newPlatform = new Platform(x, y, width * platformScale, Platform.platformTexture.getHeight());
+		platforms.add(newPlatform);
+	}
+	
+	public void setRunning()
+	{
+		state = State.RUNNING;
+	}
+	
+	public void setGameOver()
+	{
+		state = State.GAMEOVER;
+	}
+	
+	public State getState()
+	{
+		return state;
+	}
+	
+	public void setPause()
+	{
+		state = State.PAUSED;
+	}
+	
+	public void addScore(int points)
+	{
+		score += points;
+	}
+	
+	public void reset()
+	{
+		player = new Player((float)(Gdx.graphics.getWidth() * 0.25F), (float)(Gdx.graphics.getHeight() * 0.25F),
+				0.2F, 0.3F, this);
+		enemies = new ArrayList<Enemy>();
+		platforms = new ArrayList<Platform>();
+		platforms.add(new Platform((float)(Gdx.graphics.getWidth() * 0.25F), (float)(Gdx.graphics.getHeight() * 0.25F),
+				Gdx.graphics.getWidth() * 0.75F, Platform.platformTexture.getHeight()));
+		state = State.PAUSED;
+	}
+}
